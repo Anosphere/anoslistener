@@ -1,0 +1,8 @@
+[Unit]
+Description=anos listener: the check of validator 1's copy, and one ping when all is good
+RequiresMountsFor=/var/lib/barman
+
+[Service]
+Type=oneshot
+User=barman
+ExecStart=/bin/sh /opt/listener/listenersoftware/scripts/check.sh validator1

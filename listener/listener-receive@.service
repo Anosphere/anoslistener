@@ -1,0 +1,16 @@
+[Unit]
+Description=anos listener: Barman's WAL listener for %i
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/var/lib/barman
+
+[Service]
+User=barman
+Group=barman
+ExecStartPre=/bin/sh /opt/listener/listenersoftware/scripts/move-unfinished.sh %i
+ExecStart=/usr/bin/barman receive-wal %i
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

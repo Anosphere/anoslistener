@@ -1,0 +1,8 @@
+[Unit]
+Description=anos listener: Barman moves the finished WAL files of %i into its store
+RequiresMountsFor=/var/lib/barman
+
+[Service]
+Type=oneshot
+User=barman
+ExecStart=/usr/bin/barman archive-wal %i

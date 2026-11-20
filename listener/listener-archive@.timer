@@ -1,0 +1,9 @@
+[Unit]
+Description=anos listener: once a minute, the finished WAL files of %i go into Barman's store
+
+[Timer]
+OnCalendar=*:*:00
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

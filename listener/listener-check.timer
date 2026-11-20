@@ -1,0 +1,9 @@
+[Unit]
+Description=anos listener: once a minute, at second 20, the check of validator 1's copy
+
+[Timer]
+OnCalendar=*:*:20
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

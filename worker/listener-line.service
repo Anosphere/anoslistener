@@ -1,0 +1,20 @@
+[Unit]
+Description=anos listener: the line from this worker to listener1
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=listener
+Group=listener
+EnvironmentFile=/etc/listener/line.env
+ExecStart=/bin/sh /opt/listener/listenersoftware/scripts/line.sh
+Restart=always
+RestartSec=10
+RestartPreventExitStatus=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
