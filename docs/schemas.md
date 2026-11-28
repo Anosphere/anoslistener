@@ -60,7 +60,7 @@ validator 1, at Google (banker-484021)                 listener1, at Hetzner (As
 | `listener-archive@.timer` | `/etc/systemd/system/` | L6 | runs the unit above once a minute, at second 00 |
 | `listener-check.service` | `/etc/systemd/system/` | L6 | one run of `scripts/check.sh validator1` |
 | `listener-check.timer` | `/etc/systemd/system/` | L6 | runs the unit above once a minute, at second 20, so it does not start together with the archive timer |
-| `verify-garlic-chain.mjs` | not installed; run from the clone | `practice-restore.sh`, point P6 | the chain check. A copy of `anossoftwarescripts/verify-garlic-chain.mjs`, byte for byte. It takes its two packages from the validator's clone, `/opt/listener/anosvalidator` |
+| `verify-garlic-chain.mjs` | not installed; run from the clone | `practice-restore.sh`, point P6 | the chain check. A copy of `anossoftwarescripts/verify-garlic-chain.mjs`, byte for byte. It takes its two packages from the validator's clone, `/opt/listener/anosvalidator`. Since 2026-11-28 the copy is the chain check as step 4 of validator fund payment plan 1 (`~/Desktop/Z-TestNet/forclaude/validator-fund-payment-plan-1.md`) changed it, so that it knows a payment to the Fund, a link of type `paymentToFund`, and it was compared again with `anossoftwarescripts/verify-garlic-chain.mjs` on that day, byte for byte (section 6 of this file) |
 
 All three service units have `RequiresMountsFor=/var/lib/barman`: with no
 Volume there is no listener, no archiving and no ping, and nothing is
@@ -354,6 +354,12 @@ Run on the build's Mac on 2026-11-19:
 - `sh -n` and `dash -n` on every one of the twelve scripts.
 - `cmp` of `listener/verify-garlic-chain.mjs` with
   `anossoftwarescripts/verify-garlic-chain.mjs`: byte for byte.
+  Since 2026-11-28 the copy is the chain check as step 4 of validator
+  fund payment plan 1
+  (`~/Desktop/Z-TestNet/forclaude/validator-fund-payment-plan-1.md`)
+  changed it, so that it knows a payment to the Fund, a link of type
+  `paymentToFund`; `cmp` of the two was run again on that day: byte for
+  byte.
 - A `diff` of the files of the plan's appendix A with the files here, and of
   the README's walk with the plan's section 11.
 - No dollar sign in any line of the README that the operator pastes.
