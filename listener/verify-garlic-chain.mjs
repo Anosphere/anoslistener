@@ -29,10 +29,10 @@
  *   - record_hash is the SHA-256 of trans_hash followed by the record_hash
  *     of the link before it;
  *   - every signature: the eight of an account creation, by the eight keys
- *     it names; those of a transfer, a stake and a fund proposal, by the
- *     keys the signing account was created with, under the validator's
- *     rule (any two of the three key pairs; the break-glass pair alone for
- *     a break-glass transfer);
+ *     it names; those of a transfer, a stake, a payment to the fund and a
+ *     fund proposal, by the keys the signing account was created with,
+ *     under the validator's rule (any two of the three key pairs; the
+ *     break-glass pair alone for a break-glass transfer);
  *   - the ids: an account's id and an account creation's transaction id are
  *     the hashes of its keys; every other transaction id is the hash of the
  *     transaction without it; a payout link is exactly the payout of the
@@ -141,8 +141,12 @@ const ACCOUNT_TYPES = [SPENDING, GUARDED, VAULT, ASSISTED];
 const ACCOUNT_CREATION = 'accountCreation';
 const BREAK_GLASS_TRANSFER = 'breakGlassTransfer';
 const TRANSFER_TO_FUND = 'transferToFund';
+const PAYMENT_TO_FUND = 'paymentToFund';
 const FUND_PROPOSAL = 'fundProposal';
 const TRANSFER_FROM_FUND = 'transferFromFund';
+
+/** How paymentFor of a paymentToFund must look: a short word, 1 to 32 letters and digits, the first a letter (the validator's src/fund/fund.service.js). */
+const PAYMENT_FOR = /^[A-Za-z][A-Za-z0-9]{0,31}$/;
 
 /** The six transfer types: the one account type each may leave (null: any), and its signing rule. */
 const TRANSFER_TYPES = new Map([
@@ -155,7 +159,7 @@ const TRANSFER_TYPES = new Map([
 ]);
 
 /** The link types whose amount the database moves from account_id to account_id_to (the trigger in db/schema.sql). */
-const MOVES_ANOS = new Set([...TRANSFER_TYPES.keys(), TRANSFER_TO_FUND, TRANSFER_FROM_FUND]);
+const MOVES_ANOS = new Set([...TRANSFER_TYPES.keys(), TRANSFER_TO_FUND, TRANSFER_FROM_FUND, PAYMENT_TO_FUND]);
 
 /** The six stake purposes, each with its stakes column. */
 const STAKE_COLUMNS = new Map([
@@ -475,7 +479,7 @@ function checkPair(pair, keys, signatures, message, say) {
   return good;
 }
 
-/** The signatures of a transfer, a stake or a fund proposal, by the account with `keys`, under `rule`. */
+/** The signatures of a transfer, a stake, a payment to the fund or a fund proposal, by the account with `keys`, under `rule`. */
 function checkAccountSignatures(keys, signatures, message, rule, say) {
   if (!isObject(signatures)) {
     say('it carries no signatures');
@@ -614,7 +618,7 @@ async function checkLink(row) {
   let expected = null;
   if (type === ACCOUNT_CREATION) {
     expected = checkAccountCreation(position, index, og, payload, message, say);
-  } else if (TRANSFER_TYPES.has(type) || type === TRANSFER_TO_FUND) {
+  } else if (TRANSFER_TYPES.has(type) || type === TRANSFER_TO_FUND || type === PAYMENT_TO_FUND) {
     expected = await checkTransfer(row, og, payload, message, say);
   } else if (type === FUND_PROPOSAL) {
     expected = await checkFundProposal(position, og, payload, message, say);
@@ -770,15 +774,17 @@ function checkAccountCreation(position, index, og, payload, message, say) {
 }
 
 /**
- * A transfer of any of the six types, or a transferToFund (a stake): the
- * ids, the amount, the sender's signatures, and the rules that must still
- * hold on the chain. A stake grows the sender's stake; a break-glass
- * transfer moves the sender's stakes to the receiver.
+ * A transfer of any of the six types, a transferToFund (a stake) or a
+ * paymentToFund (a payment to the fund that is no stake): the ids, the
+ * amount, the sender's signatures, and the rules that must still hold on
+ * the chain. A stake grows the sender's stake; a payment to the fund grows
+ * none; a break-glass transfer moves the sender's stakes to the receiver.
  */
 async function checkTransfer(row, og, payload, message, say) {
   const type = payload.transactionType;
   const isStake = type === TRANSFER_TO_FUND;
-  const { from, rule } = isStake ? { from: SPENDING, rule: ANY_TWO_PAIRS } : TRANSFER_TYPES.get(type);
+  const isPayment = type === PAYMENT_TO_FUND;
+  const { from, rule } = isStake || isPayment ? { from: SPENDING, rule: ANY_TWO_PAIRS } : TRANSFER_TYPES.get(type);
   const expected = { accountId: undefined, accountIdTo: undefined, transactionId: undefined, amount: undefined };
 
   // The ids and the amount.
@@ -808,6 +814,14 @@ async function checkTransfer(row, og, payload, message, say) {
   if (isStake) {
     if (accountIdTo !== null && !accountIdTo.equals(FUND_ACCOUNT_ID)) say('a transferToFund goes to the fund, and accountIdTo is another account');
     if (!STAKE_COLUMNS.has(payload.stakeFor)) say(`stakeFor is ${show(payload.stakeFor)}, not one of ${[...STAKE_COLUMNS.keys()].join(', ')}`);
+  }
+
+  // A payment to the fund goes to the fund and says in a short word what it is for.
+  if (isPayment) {
+    if (accountIdTo !== null && !accountIdTo.equals(FUND_ACCOUNT_ID)) say('a paymentToFund goes to the fund, and accountIdTo is another account');
+    if (typeof payload.paymentFor !== 'string' || !PAYMENT_FOR.test(payload.paymentFor)) {
+      say(`paymentFor is ${show(payload.paymentFor)}, not a word of 1 to 32 letters and digits that starts with a letter`);
+    }
   }
 
   // The sender: created before this link, of the right type, signing under
